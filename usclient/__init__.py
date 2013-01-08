@@ -117,33 +117,40 @@ class USClient():
 
     @responder
     def getter(self, key=None):
-        url = self._add_token(self.APIURL + "key?key=%s" % key)
+        url = self._add_args(self.APIURL + "key", [{'key':key}])
 
         resp = requests.get(url)
         return resp
 
     @responder
     def setter(self, key=None, value=None):
-        url = self._add_token(self.APIURL + "key?key=%s&value=%s" % (key, value))
+        url = self._add_args(self.APIURL + "key", [{'key':key, 'value':value}])
         resp = requests.put(url)
         return resp
 
     @responder
     def lister(self):
-        url = self._add_token(self.APIURL + "list")
+        url = self._add_args(self.APIURL + "list")
         resp = requests.get(url)
         return resp
 
     @responder
     def deleter(self, key=None):
-        url = self._add_token(self.APIURL + "delete")
+        url = self._add_args(self.APIURL + "delete")
         if self.APIVERSION == 2:
             url = url + "&token=%s" % self.AUTHTOKEN
         resp = requests.delete(url)
         return resp
         
 
-    def _add_token(self, url):
+    def _add_args(self, url, tokens=[]):
         if self.APIVERSION == 2:
-            url = url + "&token=%s" % self.AUTHTOKEN
+            tokens.append({'token':self.AUTHTOKEN})
+
+        out = None
+        for entry in tokens:
+            out = "&".join(["%s=%s" % (k,v) for k,v in entry.items()])
+
+        if out: url = url + "?" + out 
+
         return url
