@@ -30,7 +30,7 @@ class USClient():
     def authenticate(self, username=None, password=None):
         # Authentication must happen on the v2 API only
         self.APIURL = "http://hiringapi.dev.voxel.net/v2/"
-        from nose.tools import set_trace; set_trace()
+        self.APIVERSION = 2
         resp = requests.get(self.APIURL + "auth?user=%s&pass=%s" % (username or self.UserName, password or self.Password))
         data = json.loads(resp.text)
         self.AUTHTOKEN = data.get('token')
@@ -92,51 +92,58 @@ class USClient():
         """
         def decorated_function(*args, **kwargs):
             resp = func(*args, **kwargs)
-            data = json.loads(resp.text)
+            try:
+                data = json.loads(resp.text)
+            except Exception, e:
+                return "%s failed with %s %s " % (resp.url, resp.status_code, resp.text)
 
-            if resp.status_code != 200:
-                return "error %s %s " % (resp.status_code, data.get('msg'))
+
+            if resp.status_code != 200: 
+                return "%s %s " % (data.get('status'), data.get('msg'))
             else:
-                key = None
+                items = None
+
                 if args[0] or kwargs.get('key'):
-                    key = data.get(kwargs.get('key'))
-                return " ".join([x for x in [data.get('status'), key] if x is not None]) 
+                    items = data.get(kwargs.get('key'))
+
+                # lister should output all the keys
+                if data.get('keys'):
+                    items = " ".join(data.get('keys'))
+                    
+                return " ".join([x for x in [data.get('status'), items] if x is not None]) 
 
         return decorated_function
 
 
     @responder
     def getter(self, key=None):
-        url = self.APIURL + "key?key=%s" % key
-        if self.APIVERSION == 2:
-            url = url + "&token=%s" % self.AUTHTOKEN
+        url = self._add_token(self.APIURL + "key?key=%s" % key)
 
         resp = requests.get(url)
         return resp
 
     @responder
     def setter(self, key=None, value=None):
-        url = self.APIURL + "key?key=%s&value=%s" % (key, value)
-        if self.APIVERSION == 2:
-            url = url + "&token=%s" % self.AUTHTOKEN
+        url = self._add_token(self.APIURL + "key?key=%s&value=%s" % (key, value))
         resp = requests.put(url)
         return resp
 
     @responder
     def lister(self):
-        url = self.APIURL + "list" 
-        if self.APIVERSION == 2:
-            url = url + "&token=%s" % self.AUTHTOKEN
+        url = self._add_token(self.APIURL + "list")
         resp = requests.get(url)
         return resp
 
     @responder
     def deleter(self, key=None):
-        url = self.APIURL + "delete"
+        url = self._add_token(self.APIURL + "delete")
         if self.APIVERSION == 2:
             url = url + "&token=%s" % self.AUTHTOKEN
         resp = requests.delete(url)
         return resp
         
 
-
+    def _add_token(self, url):
+        if self.APIVERSION == 2:
+            url = url + "&token=%s" % self.AUTHTOKEN
+        return url

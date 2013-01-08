@@ -20,6 +20,7 @@ class UsClientPositiveTestsv1(BaseUsClientTestsv1):
 
         resp = self.usc.lister()
         self.assertTrue(resp.startswith("ok"), resp)
+        self.assertTrue(len(resp.split()) > 0)
 
         resp = self.usc.deleter(key="mykey")
         self.assertTrue(resp.startswith("ok"), resp)
