@@ -24,9 +24,7 @@ class USClient
             $this->auth();
         }
     }
-    function __destruct() {
-        print("Terminate");
-    }
+    function __destruct() {}
     
     public function api_url() {
         return($this->BASEURL . "/v" . $this->APIVERSION . "/");
@@ -43,7 +41,26 @@ class USClient
         }
         while (!feof($fp)) {
             $line = fgets($fp);
-            $this->_execute_command($line);
+            $resp = $this->_execute_command($line);
+            if (!$resp) {
+                continue;
+            }
+            $out = "";
+            try {
+                $ovars = get_object_vars($resp);
+                if ($ovars) {
+                    foreach ($ovars as $okey=>$oval) {
+                        if ($okey == "status") continue;
+                        if (is_array($oval))
+                            $out .= implode(" ", $oval);
+                        else
+                            $out .= " " . $oval;
+                    }                
+                }
+                printf("%s %s\n", $resp->status, $out);                
+            } catch (Exception $e){
+                var_dump($resp);
+            }
         }
         fclose($fp);
     }
@@ -60,25 +77,34 @@ class USClient
         if (!$this->UserName or !$this->Password) {
             die("Cannot authenticate without username and password");
         }
+        $this->APIVERSION = 2;
         printf("Will authenticate with %s / %s", 
-                $this->Username, $this->Password);
+                $this->UserName, $this->Password);
+        $url = $this->_build_url("auth", array('user'=>$username, 'pass'=>$password));
+        $resp = $this->Requests->GET($url);
+        $this->AUTHTOKEN = $resp->token;
+        return $resp->status;
     }
     
     public function getter($key=null) {
         $url = $this->_build_url("key", array('key'=>$key));
-        $this->Requests->GET($url);
+        $resp = $this->Requests->GET($url);
+        return $resp;
     }
     public function setter($key=null,$value=null) {
         $url = $this->_build_url("key", array('key'=>$key, 'value'=>$value));
-        $this->Requests->POST($url, array('key'=>$key, 'value'=>$value));
+        $resp = $this->Requests->POST($url, array('key'=>$key, 'value'=>$value));
+        return $resp;
     }
     public function lister() {
         $url = $this->_build_url("list", array());
-        $this->Requests->GET($url);
+        $resp = $this->Requests->GET($url);
+        return $resp;
     }
     public function deleter($key=null) {
         $url = $this->_build_url("key", array('key'=>$key));
-        $this->Requests->DELETE($url);
+        $resp = $this->Requests->DELETE($url);
+        return $resp;
     }
 
     // Private Functions
@@ -92,25 +118,26 @@ class USClient
         $args = preg_split('/\s+/', $line);
         switch($args[0]) {
             case 'auth': 
-                $this->auth($args[1], $args[2]);
+                $resp = $this->auth($args[1], $args[2]);
                 break;
             case 'get':
-                $this->getter($args[1]);
+                $resp = $this->getter($args[1]);
                 break;
             case 'put':
             case 'set':
-                $this->setter($args[1], $args[2]);
+                $resp = $this->setter($args[1], $args[2]);
                 break;
             case 'delete':
-                $this->deleter($args[1]);
+                $resp = $this->deleter($args[1]);
                 break;
             case 'list':
-                $this->lister();
+                $resp = $this->lister();
                 break;
             default:
-                print("Unknown method $args[0]");
+                $resp = "Unknown method $args[0]";
                 break;
         }
+        return $resp;
     }
 
     private function _build_url($resource, $params) {
@@ -123,9 +150,7 @@ class USClient
         }
         $url = $this->api_url() . $resource . "?" . $url;
         // clean extraneous &
-        $url = preg_replace('/\&$|\?$/', '', $url);
-        
-        print("URL is now $url\n");
+        $url = preg_replace('/\&$|\?$/', '', $url);      
         return $url;
     }
 

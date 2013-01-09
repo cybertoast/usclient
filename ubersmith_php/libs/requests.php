@@ -12,9 +12,10 @@ class Requests {
         $CURL = curl_init();
         $this->_set_common_curl_opts($CURL, $url);
         $resp = curl_exec ( $CURL );
-        if (! $resp) $resp = $this->_parse_curl_info($CURL);
+        if (!$resp) $resp = $this->_parse_curl_info($CURL);
+        else $resp = json_decode($resp);
         curl_close($CURL);
-        return $resp;
+        return ($resp);
     }
     public function PUT($url, $data=array()) {
         $CURL = curl_init();
@@ -23,10 +24,12 @@ class Requests {
         curl_setopt($CURL, CURLOPT_CUSTOMREQUEST, "PUT");
         curl_setopt( $CURL, CURLOPT_POSTFIELDS, $postfields);
 
-        $resp = curl_exec ( $CURL );        
-        if (! $resp) $resp = $this->_parse_curl_info($CURL);
+        $resp = curl_exec( $CURL );        
+        if (!$resp) $resp = $this->_parse_curl_info($CURL);
+        else $resp = json_decode($resp);
+
         curl_close($CURL);
-        return $resp;
+        return($resp);
     }
     /**
      * Parameter: $data should be array("key=value", "key=value")
@@ -38,7 +41,9 @@ class Requests {
         curl_setopt( $CURL, CURLOPT_POST, true);    // POST request
         curl_setopt( $CURL, CURLOPT_POSTFIELDS, $postfields);
         $resp = curl_exec ( $CURL );
-        if (! $resp) $resp = $this->_parse_curl_info($CURL);
+        if (!$resp) $resp = $this->_parse_curl_info($CURL);
+        else $resp = json_decode($resp);
+        
         curl_close($CURL);
         return $resp;
     }
@@ -48,7 +53,9 @@ class Requests {
         $this->_set_common_curl_opts($CURL, $url);
         curl_setopt($CURL, CURLOPT_CUSTOMREQUEST, "DELETE");
         $resp = curl_exec ( $CURL );
-        if (! $resp) $resp = $this->_parse_curl_info($CURL);
+        if (!$resp) $resp = $this->_parse_curl_info($CURL);
+        else $resp = json_decode($resp);
+        
         curl_close($CURL);
         return $resp;
     }
@@ -73,12 +80,14 @@ class Requests {
     
     private function _parse_curl_info($CURL) {
         $resp = array();
-        $resp['header_size'] = curl_getinfo($CURL, CURLINFO_HEADER_SIZE);
-        $resp['status_code'] = curl_getinfo($CURL, CURLINFO_HTTP_CODE);
+        $curlinfo = curl_getinfo($CURL);
+        $resp['header_size'] = $curlinfo['header_size'];
+        $resp['status_code'] = $curlinfo['http_code'];
         $resp['errno'] = curl_errno($CURL);
         $resp['text'] = curl_error ( $CURL );
-        $resp['content_type'] = curl_getinfo($CURL, CURLINFO_CONTENT_TYPE);
-        $resp['request_size'] = curl_getinfo($CURL, CURLINFO_REQUEST_SIZE);
+        $resp['content_type'] = $curlinfo['content_type'];
+        $resp['request_size'] = $curlinfo['request_size'];
+        $resp['url'] = $curlinfo['url'];
 
         return $resp;
     }
