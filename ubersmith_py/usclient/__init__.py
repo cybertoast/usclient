@@ -136,7 +136,7 @@ class USClient():
 
     @responder
     def deleter(self, key=None):
-        url = self._add_args(self.APIURL + "delete")
+        url = self._add_args(self.APIURL + "key", [{'key': key}])
         if self.APIVERSION == 2:
             url = url + "&token=%s" % self.AUTHTOKEN
         resp = requests.delete(url)
